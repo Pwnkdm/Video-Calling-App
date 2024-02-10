@@ -30,13 +30,17 @@ const Room = () => {
         socket.emit('call:accepted1',{to:from,ans});
     },[socket]);
 
-    const handleCallAccepted = useCallback(async ({from,ans})=>{
-        peer.setLocalDescription(ans);
-        console.log('call:accepted2!');
-        for (const track of mystream.getTracks()){
-             peer.peer.addTrack(track,mystream)
-        }
+    const sendStreams =useCallback(()=>{
+      for (const track of mystream.getTracks()){
+        peer.peer.addTrack(track,mystream)
+     }
     },[mystream]);
+
+    const handleCallAccepted = useCallback(async ({from,ans})=>{
+       await peer.setLocalDescription(ans);
+        console.log('call:accepted2!');
+        sendStreams();
+      },[sendStreams]);
 
     const handleNegoNeeded = useCallback(async ()=>{
         const offer = await peer.getOffer();
@@ -51,8 +55,8 @@ const Room = () => {
       }
     }, [handleNegoNeeded])
 
-    const handleNegoNeededIncomming = useCallback(({from,offer})=>{
-      const ans = peer.getAnswer(offer);
+    const handleNegoNeededIncomming = useCallback(async({from,offer})=>{
+      const ans = await peer.getAnswer(offer);
       socket.emit('peer:nego:done',{to:from,ans});
     },[socket]);
 
@@ -63,9 +67,9 @@ const Room = () => {
 
     useEffect(() => {
         peer.peer.addEventListener("track",async(ev)=>{
-          const remoteStram = ev.streams;
-          console.log(remoteStram,"plk");
-          setRemoteStream(remoteStram);
+          const remoteStream = ev.streams;
+          console.log("Got Tracks!!");
+          setRemoteStream(remoteStream?.[0]);
         })
       
        
@@ -91,6 +95,7 @@ const Room = () => {
     <div>
       <h1>Room Page</h1>
       <h4>{remoteSocketId?'Connected':"No one in room"}</h4>
+      {mystream && <button onClick={sendStreams}>Send stream</button>}
      {remoteSocketId && <button onClick={handleCallUser}>Call</button>}
      {mystream &&<>
      <h2>My Stream</h2>
